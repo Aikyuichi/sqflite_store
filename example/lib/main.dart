@@ -3,7 +3,7 @@ import 'package:sqflite_store/sqflite_store.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await registerDbAsset('assets/main.sqlite', key: 'db', copy: 'once');
+  await registerDbAsset('assets/main.sqlite', key: 'db', copy: 'once', defaultDb: true);
   runApp(const MyApp());
 }
 
@@ -71,7 +71,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<int> _getCounter() async {
-    final db  = await getDatabase('db');
+    final db = await getDatabase(key: 'db');
     final List<Map<String, dynamic>> result = await db.rawQuery('SELECT value FROM counter WHERE rowid = 1');
     if (result.isNotEmpty) {
       return result.first['value'];
@@ -80,7 +80,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> _add() async {
-    final db  = await getDatabase('db');
+    final db = await getDatabase();
     await db.rawQuery('UPDATE counter SET value = value + 1 WHERE rowid = 1');
   }
 }

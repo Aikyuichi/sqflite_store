@@ -13,7 +13,7 @@ Add the dependency to your pubspec.yaml:
 ```yaml
 dependencies:
   ...
-  sqflite_store: ^0.0.1
+  sqflite_store: ^0.1.0
 ```
 
 ## Usage example
@@ -24,7 +24,7 @@ Register the database in the main.dart
 ```dart
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await registerDbAsset('assets/main.sqlite', key: 'db', copy: 'once');
+  await registerDbAsset('assets/main.sqlite', key: 'db', copy: 'once', defaultDb: true);
 
   runApp(const MyApp());
 }
@@ -32,6 +32,6 @@ void main() async {
 
 Get the database using the key.
 ```dart
-final db = await getDatabase('db');
+final db = await getDatabase(key: 'db');
 ```
 The db object is a instance of [sqflite](https://pub.dev/packages/sqflite) database.

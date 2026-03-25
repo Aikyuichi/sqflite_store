@@ -13,13 +13,23 @@ export 'src/sqflite_extension.dart';
 /// Adds a database from assets to the repository.
 ///
 /// the default [key] for the database is the name without the extension.
-Future<void> registerDbAsset(String path, { String? key, String copy = 'always', bool readonly = false, Map<String, String> attachments = const {} }) {
-  return DbStore().registerAsset(path, key, copy, readonly, attachments);
+/// When copy is set to
+/// - 'always': the database is copied from the assets to the repository every time the app is launched.
+/// - 'once': the database is copied when the app is launched for the first time or when it doesn't exists.
+Future<void> registerDbAsset(String path,
+    {String? key,
+    String copy = 'always',
+    Map<String, String> attachments = const {},
+    bool readonly = false,
+    bool defaultDb = false}) {
+  return DbStore().registerAsset(path, key, copy, attachments, readonly, defaultDb);
 }
 
 /// Returns the database for the specified [key] from the repository.
-Future<Database> getDatabase(String key) {
-  return DbStore().get(key);
+/// if [key] is not specified, then the database marked as default is returned or the first one from the repository.
+Future<Database> getDatabase({String? key}) {
+  final dbKey = key ?? DbStore().getDefaultDbKey();
+  return DbStore().get(dbKey);
 }
 
 /// Close all the databases of repository.

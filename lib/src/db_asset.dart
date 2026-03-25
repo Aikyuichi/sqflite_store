@@ -9,5 +9,6 @@ class DbAsset {
   final bool readonly;
   final Map<String, String> attachments;
 
-  DbAsset(this.sourcePath, this.targetPath, this.copy, this.readonly, this.attachments);
+  DbAsset(this.sourcePath, this.targetPath, this.copy, this.readonly,
+      this.attachments);
 }

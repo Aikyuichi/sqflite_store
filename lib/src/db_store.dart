@@ -16,6 +16,7 @@ import 'db_update.dart';
 class DbStore {
   final Map<String, DbAsset> _assets = {};
   final Map<String, Future<Database>> _databases = {};
+  String _defaultDbKey = "";
 
   static final DbStore _instance = DbStore.internal();
 
@@ -24,7 +25,7 @@ class DbStore {
   DbStore.internal();
 
   /// Adds a database from assets to the repository.
-  Future<void> registerAsset(String path, String? key, String copy, bool readonly, Map<String, String> attachments) async {
+  Future<void> registerAsset(String path, String? key, String copy, Map<String, String> attachments, bool readonly, bool defaultDb) async {
     final dbKey = key ?? basenameWithoutExtension(path);
     final targetPath = await _copyAsset(path, copy);
     final item = DbAsset(
@@ -35,6 +36,9 @@ class DbStore {
       attachments,
     );
     _assets[dbKey] = item;
+    if (defaultDb) {
+      _defaultDbKey = dbKey;
+    }
   }
 
   /// Returns the database for the specified [key] from the repository.
@@ -54,6 +58,13 @@ class DbStore {
     for (var database in _databases.values) {
       (await database).close();
     }
+  }
+
+  String getDefaultDbKey() {
+    if (_defaultDbKey.isEmpty && _assets.keys.isNotEmpty) {
+      _defaultDbKey = _assets.keys.first;
+    }
+    return _defaultDbKey;
   }
 
   /// Updates the databases specified in the json file of the given [path].
@@ -179,6 +190,12 @@ class DbStore {
         await db.execute('VACUUM');
       }
     } catch (e) {
+      if (update.skipOnError) {
+        await db.execute('PRAGMA user_version = ${update.version}');
+        if (update.vacuum) {
+          await db.execute('VACUUM');
+        }
+      }
       if (kDebugMode) {
         print(e);
       }
