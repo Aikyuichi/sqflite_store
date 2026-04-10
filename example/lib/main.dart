@@ -33,11 +33,22 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  late final AppLifecycleListener _lifecycle;
   late Future<int> _counter = _getCounter();
 
   @override
+  void initState() {
+    super.initState();
+    _lifecycle = AppLifecycleListener(
+      onPause: () {
+        closeDbStore();
+      }
+    );
+  }
+
+  @override
   void dispose() {
-    closeDbStore();
+    _lifecycle.dispose();
     super.dispose();
   }
 

@@ -1,7 +1,7 @@
 name: sqflite_store
 description: "Access your SQLite databases easily."
-version: 0.1.0
-homepage: https://aky.dev
+version: 0.1.1
+homepage: https://github.com/Aikyuichi/sqflite_store
 
 environment:
   sdk: ">=3.3.0 <4.0.0"
@@ -12,7 +12,7 @@ dependencies:
     sdk: flutter
 
   path: ">=1.8.0 <3.0.0"
-  sqflite: ^2.3.3+1
+  sqflite: "^2.3.3+2"
 
 dev_dependencies:
   flutter_test:

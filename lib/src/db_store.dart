@@ -53,10 +53,13 @@ class DbStore {
     return _databases[key]!;
   }
 
-  /// Close all the databases of repository.
+  /// Close all databases in the repository.
   Future<void> close() async {
-    for (var database in _databases.values) {
-      (await database).close();
+    final dbKeys = _databases.keys.toList();
+    for (var dbKey in dbKeys) {
+      final db = await _databases[dbKey]!;
+      await db.close();
+      _databases.remove(dbKey);
     }
   }
 
@@ -182,7 +185,7 @@ class DbStore {
           for (var command in update.commands) {
             await txn.execute(command);
           }
-          await txn.execute('PRAGMA user_version = ${update.version}');
+          await txn.setVersion(update.version);
         }
         result = true;
       });
@@ -191,7 +194,7 @@ class DbStore {
       }
     } catch (e) {
       if (update.skipOnError) {
-        await db.execute('PRAGMA user_version = ${update.version}');
+        await db.setVersion(update.version);
         if (update.vacuum) {
           await db.execute('VACUUM');
         }

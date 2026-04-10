@@ -13,12 +13,12 @@ Add the dependency to your pubspec.yaml:
 ```yaml
 dependencies:
   ...
-  sqflite_store: ^0.1.0
+  sqflite_store: ^0.1.1
 ```
 
 ## Usage example
 
-Check the example folder
+Check the example folder.
 
 Register the database in the main.dart
 ```dart
@@ -35,3 +35,8 @@ Get the database using the key.
 final db = await getDatabase(key: 'db');
 ```
 The db object is a instance of [sqflite](https://pub.dev/packages/sqflite) database.
+
+Close all the databases in the repository.
+```dart
+closeDbStoree();
+```
