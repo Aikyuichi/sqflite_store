@@ -38,5 +38,5 @@ The db object is a instance of [sqflite](https://pub.dev/packages/sqflite) datab
 
 Close all the databases in the repository.
 ```dart
-closeDbStoree();
+closeDbStore();
 ```

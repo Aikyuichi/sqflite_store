@@ -3,20 +3,18 @@
 // Use of this source code is governed by a MIT license that can be found in the LICENSE file.
 
 import 'dart:io';
-import 'dart:convert';
 import 'package:flutter/foundation.dart' show kDebugMode, ByteData;
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import 'sqflite_extension.dart';
 import 'db_asset.dart';
-import 'db_update.dart';
 
 /// Databases repository.
 class DbStore {
   final Map<String, DbAsset> _assets = {};
   final Map<String, Future<Database>> _databases = {};
-  String _defaultDbKey = "";
+  String _defaultDbKey = '';
 
   static final DbStore _instance = DbStore.internal();
 
@@ -25,7 +23,8 @@ class DbStore {
   DbStore.internal();
 
   /// Adds a database from assets to the repository.
-  Future<void> registerAsset(String path, String? key, String copy, Map<String, String> attachments, bool readonly, bool defaultDb) async {
+  Future<void> addAsset(String path, String? key, String copy,
+      Map<String, String> attachments, bool readonly, bool defaultDb) async {
     final dbKey = key ?? basenameWithoutExtension(path);
     final targetPath = await _copyAsset(path, copy);
     final item = DbAsset(
@@ -41,16 +40,31 @@ class DbStore {
     }
   }
 
+  DbAsset getAsset(String key) {
+    if (!checkAssetExists(key)) {
+      throw _dbNotRegisteredException(key);
+    }
+    return _assets[key]!;
+  }
+
   /// Returns the database for the specified [key] from the repository.
-  Future<Database> get(String key) {
-    if (!_databases.containsKey(key)) {
-      if (!_assets.containsKey(key)) {
-        _printDbNotRegistered(key);
-      }
-      final item = _assets[key]!;
-      _databases[key] = _open(item, item.readonly);
+  Future<Database> getDatabase(String key) async {
+    if (!_databases.containsKey(key) || !(await _databases[key]!).isOpen) {
+      final dbAsset = getAsset(key);
+      _databases[key] = open(dbAsset, dbAsset.readonly);
     }
     return _databases[key]!;
+  }
+
+  bool checkAssetExists(String key) {
+    return _assets.containsKey(key);
+  }
+
+  String getDefaultDbKey() {
+    if (_defaultDbKey.isEmpty && _assets.keys.isNotEmpty) {
+      _defaultDbKey = _assets.keys.first;
+    }
+    return _defaultDbKey;
   }
 
   /// Close all databases in the repository.
@@ -63,38 +77,9 @@ class DbStore {
     }
   }
 
-  String getDefaultDbKey() {
-    if (_defaultDbKey.isEmpty && _assets.keys.isNotEmpty) {
-      _defaultDbKey = _assets.keys.first;
-    }
-    return _defaultDbKey;
-  }
-
-  /// Updates the databases specified in the json file of the given [path].
-  Future<void> update(String path) async {
-    final updates = await _getUpdates(path);
-    if (updates.isEmpty) {
-      return;
-    }
-    for (var update in updates) {
-      var result = await _executeUpdate(update);
-      if (!result) {
-        if (update.skipOnError) {
-          if (kDebugMode) {
-            print('update failed but skipped: $update');
-          }
-        } else {
-          if (kDebugMode) {
-            print('update failed: $update');
-            break;
-          }
-        }
-      }
-    }
-  }
-
-  Future<Database> _open(DbAsset item, bool readonly) async {
-    final db = await openDatabase(item.targetPath, readOnly: readonly);
+  Future<Database> open(DbAsset item, bool readonly) async {
+    final db = await openDatabase(item.targetPath,
+        readOnly: readonly, singleInstance: false);
     for (var schema in item.attachments.keys) {
       final exists = await _checkSchemaExists(db, schema);
       if (!exists) {
@@ -124,7 +109,8 @@ class DbStore {
         final db = await openDatabase(targetPath, readOnly: true);
         final targetVersion = await db.getVersion();
         await db.close();
-        copy = (operation == '<' && targetVersion < sourceVersion) || (operation == '>' && targetVersion > sourceVersion);
+        copy = (operation == '<' && targetVersion < sourceVersion) ||
+            (operation == '>' && targetVersion > sourceVersion);
       } else {
         copy = true;
       }
@@ -133,7 +119,8 @@ class DbStore {
       try {
         await Directory(dirname(targetPath)).create(recursive: true);
         ByteData data = await rootBundle.load(sourcePath);
-        List<int> bytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+        List<int> bytes =
+            data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
         await File(targetPath).writeAsBytes(bytes, flush: true);
       } catch (e) {
         if (kDebugMode) {
@@ -146,71 +133,17 @@ class DbStore {
   }
 
   Future<bool> _checkSchemaExists(Database db, String schema) async {
-    try {
-      return (await db.rawQuery("SELECT 1 FROM pragma_database_list WHERE name = '$schema'")).isNotEmpty;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  Future<List<DbUpdate>> _getUpdates(String filename) async {
-    final data = await rootBundle.loadString(filename);
-    final Map<String, dynamic> json = jsonDecode(data);
-    final updates = <DbUpdate>[];
-    for (var key in json.keys) {
-      for (var id in json[key]['versions'].keys) {
-        updates.add(DbUpdate.fromJSON(int.parse(id), key, json[key]['versions'][id]));
-      }
-    }
-    return updates;
-  }
-
-  Future<bool> _executeUpdate(DbUpdate update) async {
-    var result = false;
-    if (!_assets.containsKey(update.dbKey)) {
-      _printDbNotRegistered(update.dbKey);
-    }
-    final dbItem = _assets[update.dbKey]!;
-    final db = await _open(dbItem, false);
-    for (var attachment in update.attachments) {
-      if (_assets.containsKey(attachment)) {
-        final attachmentItem = _assets[attachment]!;
-        await db.attach(attachmentItem.targetPath, attachment);
-      }
-    }
-    try {
-      await db.transaction((txn) async {
-        final version = await txn.getVersion();
-        if (version < update.version) {
-          for (var command in update.commands) {
-            await txn.execute(command);
-          }
-          await txn.setVersion(update.version);
-        }
-        result = true;
-      });
-      if (update.vacuum) {
-        await db.execute('VACUUM');
-      }
-    } catch (e) {
-      if (update.skipOnError) {
-        await db.setVersion(update.version);
-        if (update.vacuum) {
-          await db.execute('VACUUM');
-        }
-      }
-      if (kDebugMode) {
-        print(e);
-      }
-    } finally {
-      await db.close();
-    }
-    return result;
+    final attachments = await db.getAttachments();
+    return attachments.any((x) => x['name'] == schema);
   }
 
   void _printDbNotRegistered(String? key) {
     if (kDebugMode) {
       print('there is no database registered with the key: $key');
     }
+  }
+
+  Exception _dbNotRegisteredException(String key) {
+    return Exception('there is no database registered with the key: $key');
   }
 }

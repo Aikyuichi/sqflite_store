@@ -1,6 +1,6 @@
 name: sqflite_store
 description: "Access your SQLite databases easily."
-version: 0.1.1
+version: 0.2.0
 homepage: https://github.com/Aikyuichi/sqflite_store
 
 environment:
