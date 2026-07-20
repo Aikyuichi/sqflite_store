@@ -13,7 +13,7 @@ Add the dependency to your pubspec.yaml:
 ```yaml
 dependencies:
   ...
-  sqflite_store: ^0.1.1
+  sqflite_store: ^0.2.0
 ```
 
 ## Usage example
