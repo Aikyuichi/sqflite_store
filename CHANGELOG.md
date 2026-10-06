@@ -1,3 +1,5 @@
+## 0.3.0
+* Documentation and example project improvements.
 ## 0.2.0
 #### New functions in Database class
 * *checkForeignKeys()*: Checks the database, or a table, for foreign key constraints that are violated.

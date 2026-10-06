@@ -10,7 +10,7 @@ import 'package:sqflite/sqflite.dart';
 import 'sqflite_extension.dart';
 import 'db_asset.dart';
 
-/// Databases repository.
+/// Centralized repository for managing SQLite database assets, active connections, and defaults.
 class DbStore {
   final Map<String, DbAsset> _assets = {};
   final Map<String, Future<Database>> _databases = {};
@@ -18,11 +18,14 @@ class DbStore {
 
   static final DbStore _instance = DbStore.internal();
 
+  /// Returns the singleton instance of [DbStore].
   factory DbStore() => _instance;
 
+  /// Internal constructor for the [DbStore] singleton.
   DbStore.internal();
 
-  /// Adds a database from assets to the repository.
+  /// Adds a database asset to the repository, copying it according to [copy] mode
+  /// and configuring optional [attachments], [readonly] status, and [defaultDb] flag.
   Future<void> addAsset(String path, String? key, String copy,
       Map<String, String> attachments, bool readonly, bool defaultDb) async {
     final dbKey = key ?? basenameWithoutExtension(path);
@@ -40,6 +43,8 @@ class DbStore {
     }
   }
 
+  /// Retrieves the [DbAsset] configuration associated with the given [key].
+  /// Throws an exception if no asset is registered with that key.
   DbAsset getAsset(String key) {
     if (!checkAssetExists(key)) {
       throw _dbNotRegisteredException(key);
@@ -47,7 +52,8 @@ class DbStore {
     return _assets[key]!;
   }
 
-  /// Returns the database for the specified [key] from the repository.
+  /// Returns the active [Database] instance for the specified [key] from the repository,
+  /// opening it if necessary.
   Future<Database> getDatabase(String key) async {
     if (!_databases.containsKey(key) || !(await _databases[key]!).isOpen) {
       final dbAsset = getAsset(key);
@@ -56,10 +62,12 @@ class DbStore {
     return _databases[key]!;
   }
 
+  /// Checks whether a database asset is registered with the given [key].
   bool checkAssetExists(String key) {
     return _assets.containsKey(key);
   }
 
+  /// Returns the key of the default database, or the first registered database key if none is explicitly set.
   String getDefaultDbKey() {
     if (_defaultDbKey.isEmpty && _assets.keys.isNotEmpty) {
       _defaultDbKey = _assets.keys.first;
@@ -67,7 +75,7 @@ class DbStore {
     return _defaultDbKey;
   }
 
-  /// Close all databases in the repository.
+  /// Closes all active database connections in the repository and clears cache.
   Future<void> close() async {
     final dbKeys = _databases.keys.toList();
     for (var dbKey in dbKeys) {
@@ -77,6 +85,7 @@ class DbStore {
     }
   }
 
+  /// Opens a database for the given [DbAsset] item, attaching any required schemas.
   Future<Database> open(DbAsset item, bool readonly) async {
     final db = await openDatabase(item.targetPath,
         readOnly: readonly, singleInstance: false);

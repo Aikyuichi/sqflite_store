@@ -2,6 +2,8 @@
 // All rights reserved.
 // Use of this source code is governed by a MIT license that can be found in the LICENSE file.
 
+/// A Flutter library for easy management, asset copying, schema migration,
+/// and utility extension of SQLite databases using `sqflite`.
 library sqflite_store;
 
 import 'package:sqflite/sqflite.dart' show Database;
@@ -12,15 +14,17 @@ import 'package:sqflite_store/src/db_updater.dart';
 export 'package:sqflite/sqflite.dart' hide openReadOnlyDatabase;
 export 'src/sqflite_extension.dart';
 
-/// Adds a database from assets to the repository.
+/// Registers a database from assets into the database repository.
 ///
-/// The default [key] for the database is the name without the extension.
+/// The default [key] for the database is the filename without its extension.
 ///
-/// When copy is set to
-/// - 'always': the database is copied from the assets to the repository every time the app is launched.
-/// - 'once': the database is copied when the app is launched for the first time or when it doesn't exists.
-/// - 'if<{version}': the database is copied from the assets if the database version number is less than {version} number.
-/// - 'if>{version}': the database is copied from the assets if the database version number is greater than {version} number.
+/// The [copy] parameter controls when the asset is copied to local storage:
+/// - `'always'`: The database is copied from assets to the repository every time the app launches.
+/// - `'once'`: The database is copied when the app launches for the first time or if the file does not exist.
+/// - `'if<{version}'`: The database is copied if the target database version is less than `{version}`.
+/// - `'if>{version}'`: The database is copied if the target database version is greater than `{version}`.
+///
+/// If [defaultDb] is true, this database is marked as the default database when [getDatabase] is called without a key.
 Future<void> registerDbAsset(String path,
     {String? key,
     String copy = 'always',
@@ -32,7 +36,9 @@ Future<void> registerDbAsset(String path,
 
 /// Opens a new connection to the database.
 ///
-/// If [keyOrPath] is not specified, then the database marked as default is returned or the first one from the repository. If is a key registered in the repository, that database is opened. Otherwise it is treated as the database path.
+/// If [keyOrPath] is not specified, returns the database marked as default or the first one in the repository.
+/// If [keyOrPath] matches a registered repository key, that database is opened.
+/// Otherwise, it is treated as a direct database file path.
 Future<Database> openDatabase({String? keyOrPath, bool? readonly}) {
   final dbKeyOrPath = keyOrPath ?? DbStore().getDefaultDbKey();
   DbAsset dbAsset;
@@ -44,22 +50,22 @@ Future<Database> openDatabase({String? keyOrPath, bool? readonly}) {
   return DbStore().open(dbAsset, readonly ?? dbAsset.readonly);
 }
 
-/// Returns the database for the specified [key] from the repository.
+/// Returns the database instance for the specified [key] from the repository.
 ///
-/// If [key] is not specified, then the database marked as default is returned or the first one from the repository.
+/// If [key] is not specified, returns the database marked as default or the first one in the repository.
 Future<Database> getDatabase({String? key}) {
   final dbKey = key ?? DbStore().getDefaultDbKey();
   return DbStore().getDatabase(dbKey);
 }
 
-/// Close all the databases of repository.
+/// Closes all database connections currently active in the repository.
 Future<void> closeDbStore() {
   return DbStore().close();
 }
 
-/// Updates the databases specified in the json file of the given [path].
+/// Updates the databases specified in the JSON configuration file at the given [path].
 ///
-/// The default [path] is "assets/updates.json".
+/// The default [path] is `"assets/updates.json"`.
 Future<void> updateDbStore({String path = 'assets/updates.json'}) {
   return DbUpdater().run(path);
 }

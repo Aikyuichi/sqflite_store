@@ -9,7 +9,10 @@ import 'package:sqflite/sqflite.dart';
 import 'sqflite_extension.dart';
 import 'db_store.dart';
 
+/// Handles automated schema updates and data migrations for registered databases
+/// using a JSON configuration file.
 class DbUpdater {
+  /// Runs database updates specified in the JSON asset at [path].
   Future<void> run(String path) async {
     final updates = await _getUpdates(path);
     if (updates.isEmpty) {
@@ -84,15 +87,29 @@ class DbUpdater {
   }
 }
 
+/// Represents a single database update definition loaded from the updates JSON file.
 class UpdateItem {
   late final Map<String, dynamic> _raw;
+
+  /// Target database schema version for this update item.
   final int version;
+
+  /// The database key identifying which registered database to update.
   final String dbKey;
+
+  /// List of SQL commands to execute for this update version.
   final List<String> commands;
+
+  /// List of attached databases required during the update transaction.
   final List<String> attachments;
+
+  /// Whether to execute VACUUM after the update.
   final bool vacuum;
+
+  /// Whether to skip execution errors and still commit the version bump.
   final bool skipOnError;
 
+  /// Creates an [UpdateItem] instance with the given parameters.
   UpdateItem(this.version, this.dbKey, this.commands, this.attachments,
       this.vacuum, this.skipOnError) {
     _raw = {
@@ -105,6 +122,7 @@ class UpdateItem {
     };
   }
 
+  /// Creates an [UpdateItem] instance parsed from JSON representation.
   UpdateItem.fromJSON(this.version, this.dbKey, Map<String, dynamic> json)
       : _raw = json,
         commands = (json['commands'] as List<dynamic>)
